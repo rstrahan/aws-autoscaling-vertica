@@ -11,6 +11,9 @@ if [ "$ans" != "Y" -a "$ans" != "y" ]; then
    exit 1
 fi
 
+echo "Delete Lifecycle Hook [${autoscaling_group_name}_ScaleDown]"
+aws autoscaling delete-lifecycle-hook --lifecycle-hook-name ${autoscaling_group_name}_ScaleDown --auto-scaling-group-name $autoscaling_group_name
+
 echo "Delete Autoscaling Group [$autoscaling_group_name] - this will terminate all associated instances"
 aws autoscaling delete-auto-scaling-group --auto-scaling-group-name $autoscaling_group_name --force-delete
 

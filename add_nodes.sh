@@ -59,7 +59,8 @@ admintools -t rebalance_data -d $DB -k $k_safety
 echo install autoscale scripts and crontab schedule on each new node [$nodes] [`date`]
 for n in `echo $nodes | sed -e 's/,/ /g'`
 do
-   scp -r $autoscaleDir/*.sh $autoscaleDir/key.pem $autoscaleDir/license.dat $n:/home/dbadmin
+   ssh $n mkdir -p /home/dbadmin/autoscale
+   scp -r $autoscaleDir/*.sh $autoscaleDir/key.pem $autoscaleDir/license.dat $n:/home/dbadmin/autoscale
    ssh $n chmod ug+sx $autoscaleDir/*.sh
    ssh $n '(echo "* * * * * /home/dbadmin/autoscale/read_scaledown_queue.sh" | crontab -)'
 done
