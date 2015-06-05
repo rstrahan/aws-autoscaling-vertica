@@ -1,0 +1,40 @@
+aws_access_key_id=YOUR_ACCESS_ID
+aws_secret_access_key=YOUR_SECRET_ACCESS_KEY
+region=us-east-1						# Or your region, if different	
+pem_file=/path/to/key.pem					# your ssh key file
+	
+# Vertica 7.1.1 AMI Image IDs
+# US East (N. Virginia)   	ami-7a7efc12
+# US West (Oregon)        	ami-099cd539
+# EU (Ireland)    		ami-8afb50fd
+# Asia Pacific (Singapore)	ami-a8c3e3fa
+# Asia Pacific (Sydney)   	ami-abe08c91
+# Asia Pacific (Tokyo)    	ami-f9b08df8
+image_id= ami-7a7efc12					# Or appropriate image for your region
+
+# Supported image types for Vertica AMI are: i2.4xlarge, i2.8xlarge, c3.4xlarge, c3.8xlarge, r3.4xlarge, r3.8xlarge
+instance_type=c3.4xlarge
+
+# You must supply an existing key, security group, & subnet for our new autoscaling cluster
+key_name=EXISTING_AWS_KEY_NAME
+security_group_id=EXISTING_SECURITY_GROUP
+subnet_id=EXISTING_VPC_SUBNET_ID
+
+# We will create a new placement group, launch config, and autoscaling group, using names you provide below
+placement_group=NEW_PLACEMENT_GROUP_NAME 		# E.g. Cluster1PlacementGroup
+launch_configuration_name=NEW_LAUNCH_CONFIG_NAME 		# E.g. myVerticaAutoscalingConfig
+autoscaling_group_name=NEW_AUTOSCALING_GROUP_NAME	# E.g. Cluster1AutoscalingGroup
+sns_topic=${autoscaling_group_name}_Scale_Event                 # E.g. ${autoscaling_group_name}_Scale_Event"
+
+# autoscaling settings
+min=4								# Minimum size of cluster
+max=16								# Maximum size of cluster
+desired=4							# Desired size of cluster
+cooldown=1800							# Minimum time between autoscaling actions
+
+# database
+database_name=NEW_DATABASE_NAME				# E.g. VMart
+password=PASSWORD				
+license_file=/path/to/license_file                      # path to license file, or "CE" to use the Community Edition License - 3 nodes limit
+k_safety=1                                              # For autoscaling between 1 and 3 nodes, set k_safety to 0 (not recommended!)
+

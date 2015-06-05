@@ -1,0 +1,82 @@
+#!/bin/sh
+(
+PATH=/usr/local/bin:/opt/vertica/bin:${PATH}
+# in non terminal mode, redirect stdout and stderr to logfile
+if [ ! -t 0 ]; then exec >> /var/log/launch.log 2>&1; fi
+
+echo Join new instances to Vertica DB cluster [`date`]
+echo ===========================================================
+
+# Configuration – copy from autoscaling_vars.sh
+aws_access_key_id=YOUR_ACCESS_KEY_ID
+aws_secret_access_key=YOUR_SECRET_ACCESS_KEY
+region=YOUR_REGION
+autoscaling_group_name=YOUR_AUTOSCALING_GROUP_NAME
+
+echo Install & configure AWS CLI [`date`]
+cd /tmp
+curl https://s3.amazonaws.com/aws-cli/awscli-bundle.zip -o awscli-bundle.zip
+unzip -o awscli-bundle.zip
+./awscli-bundle/install -i /usr/local/aws -b /usr/local/bin/aws
+mkdir -p ~/.aws
+cat > ~/.aws/credentials <<EOF
+[default]
+aws_access_key_id = $aws_access_key_id
+aws_secret_access_key = $aws_secret_access_key
+EOF
+cat > ~/.aws/config <<EOF
+[default]
+output = table
+region = $region
+EOF
+chmod 600 ~/.aws/*
+cp -R ~/.aws ~dbadmin
+chown -R dbadmin.verticadba ~dbadmin/.aws
+chmod 600 ~dbadmin/.aws/*
+
+# get instance configuration
+resId=$(curl -s http://169.254.169.254/latest/meta-data/reservation-id); echo Reservation: $resId
+instId=$(curl -s http://169.254.169.254/latest/meta-data/instance-id); echo InstanceId: $instId
+privateIp=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4); echo PrivateIP: $privateIp
+
+echo Retrieve private IPs for current reservationId: $resId [`date`]
+nodes=$(aws --output=text ec2 describe-instances --filters "Name=reservation-id,Values=$resId" --query "Reservations[*].Instances[*].PrivateIpAddress")
+echo Wait until all nodes [$nodes] in our reservation are listening for ssh connections on port 22 [`date`]
+for node in $nodes; do
+count=600
+   while [ $count  -ne 0 ];  do
+      nc -zw3 $node 22 && break
+      ((count=count-1))
+      [ $count -eq 0 ] && { echo Node $node is unreachable on port 22 – exiting; exit 1; }
+      sleep 1
+   done
+done
+
+echo Get all nodes in autoscaling group [`date`]
+nodes=$(aws --output=text ec2 describe-instances --filters Name=tag-key,Values=Name,Name=tag-value,Values=$autoscaling_group_name --query "Reservations[*].Instances[*].PrivateIpAddress")
+
+echo Find first node in group [$nodes] accepting DB connections [`date`]
+connectTo=""
+for node in $nodes
+do
+   echo Trying vsql connection to $node
+   vsql -U dbadmin -h $node -c "select 1" > /dev/null
+   if [ $? -eq 0 ]; then
+      echo Connection succeeded.
+      connectTo=$node
+      break
+   else
+      echo Connection failed.
+   fi
+done
+[ -z $connectTo ] && { echo No nodes in autoscaling group responded to DB connection request. Exiting.; exit 1; }
+
+# Add all new instances from this reservation to the database
+# NOTE - first instance to attempt this will succeed (only one will run, due to concurrency locking)
+echo Connect to $connectTo to add nodes for this reservation [$resId] to cluster [`date`]
+echo "$resId|$instId|$privateIp|INITIALIZING|0" | vsql -U dbadmin -h $connectTo -c "COPY autoscale.launches (reservationid, ec2_instanceid, node_address, status, is_launched) FROM STDIN"
+vsql -U dbadmin -h $connectTo -c "select autoscale.add_nodes('$resId')"
+echo Done! [`date`]
+) &  # run script in the background
+exit 0
+
