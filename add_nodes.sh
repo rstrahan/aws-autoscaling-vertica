@@ -1,19 +1,17 @@
 #!/bin/sh
-# Adds nodes to cluster and currently active DB.  Expects AWS reservation ID as argument
+# Adds nodes to cluster and currently active DB.
 # Run as external procedure from vertica server.
 
 . /home/dbadmin/.bashrc
 autoscaleDir=/home/dbadmin/autoscale
 . $autoscaleDir/autoscaling_vars.sh
 
-resId=$1
-
 # in non terminal mode, redirect stdout and stderr to logfile
 if [ ! -t 0 ]; then exec >> $autoscaleDir/add_nodes.log 2>&1; fi
-echo -e "\n\nadd_nodes $resId: [`date`]\n================================================\n"
+echo -e "\n\nadd_nodes: [`date`]\n================================================\n"
 
 # Get this node's IP
-myIp=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4); echo PrivateIP: $privateIp
+myIp=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4); echo PrivateIP: $myIp
 
 # prevent concurrent executions
 IAM=(`pgrep -d " " -f ${0//*\//}`)
@@ -30,36 +28,65 @@ for fd in $(ls /proc/$$/fd); do
   esac
 done
 
+# update launches table
+start_time=$(date +"%Y-%m-%d %H:%M:%S")
+vsql -c "UPDATE autoscale.launches SET added_by_node = '$myIp', start_time='$start_time' where is_running; COMMIT" ; > /dev/null
+
+
 # if there are active terminations in progress, wait for them to finish, so 
 # we are not removing and adding nodes at the same time
-terminations_count=$(vsql -qAt -c "select count(*) from autoscale.terminations where not is_terminated")
+terminations_count=$(vsql -qAt -c "SELECT count(*) FROM autoscale.terminations WHERE is_running")
 while [ $terminations_count -gt 0 ]; do
    echo "Nodes are currently being terminated."
    echo "We will wait for the terminations to complete before adding new nodes"
    echo "Check again in 1 minute"
+   vsql -c "UPDATE autoscale.launches SET status='WAIT FOR RUNNING TERMINATIONS' WHERE is_running; COMMIT" > /dev/null
    sleep 60
-   terminations_count=$(vsql -qAt -c "select count(*) from autoscale.terminations where not is_terminated")
+   terminations_count=$(vsql -qAt -c "SELECT count(*) FROM autoscale.terminations WHERE is_running")
 done
 
-echo retrieve private IPs for specified reservationId: $resId [`date`]
-nodes=$(aws --output=text ec2 describe-instances --filters "Name=reservation-id,Values=$resId" --query "Reservations[*].Instances[*].PrivateIpAddress" | sed -e 's/\s/,/g')
+echo Retrieve details for instances queued for addition [`date`]
+new_nodes=$(vsql -qAt -c "SELECT node_address FROM autoscale.launches WHERE is_running AND replace_node_address IS NULL" | paste -d, -s);
+replace_nodes=$(vsql -qAt -c "SELECT replace_node_address FROM autoscale.launches WHERE is_running AND replace_node_address IS NOT NULL" | paste -d, -s);
 
-echo add new nodes [$nodes] to cluster [`date`]
-start_time=$(date +"%Y-%m-%d %H:%M:%S")
-vsql -c "UPDATE autoscale.launches SET added_by_node='$myIp', start_time='$start_time', status='ADD TO CLUSTER' WHERE reservationid='$resId'; COMMIT" ;
-sudo /opt/vertica/sbin/install_vertica --add-hosts $nodes --point-to-point -L $autoscaleDir/license.dat --dba-user-password-disabled --data-dir /vertica/data --ssh-identity $autoscaleDir/key.pem --failure-threshold HALT
-DB=$(admintools -t show_active_db)
 
-echo add nodes [$nodes] to active DB [$DB] [`date`]
-vsql -c "UPDATE autoscale.launches SET added_by_node='$myIp', start_time='$start_time', status='ADD TO DATABASE' WHERE reservationid='$resId'; COMMIT" ;
-admintools -t db_add_node -s $nodes -i -d $DB
-echo rebalance cluster [`date`]
-admintools -t rebalance_data -d $DB -k $k_safety
+# process new nodes
+if [ ! -z "$new_nodes" ]; then
+   echo add new nodes [$new_nodes] to cluster [`date`]
+   vsql -c "UPDATE autoscale.launches SET status='ADD TO CLUSTER' WHERE is_running AND replace_node_address IS NULL; COMMIT" > /dev/null
+   sudo /opt/vertica/sbin/install_vertica --add-hosts $new_nodes --point-to-point -L $autoscaleDir/license.dat --dba-user-password-disabled --data-dir /vertica/data --ssh-identity $autoscaleDir/key.pem --failure-threshold HALT
+   DB=$(admintools -t show_active_db)
+   echo add nodes [$new_nodes] to active DB [$DB] [`date`]
+   vsql -c "UPDATE autoscale.launches SET status='ADD TO DATABASE' WHERE is_running AND replace_node_address IS NULL; COMMIT" > /dev/null
+   admintools -t db_add_node -s $new_nodes -i -d $DB
+   echo rebalance cluster [`date`]
+   admintools -t rebalance_data -d $DB -k $k_safety
+fi
 
-echo install autoscale scripts and crontab schedule on each new node [$nodes] [`date`]
-for n in `echo $nodes | sed -e 's/,/ /g'`
+# process replacement nodes
+if [ ! -z "$replace_nodes" ]; then
+   echo Sync replacement nodes [$replace_nodes] to cluster [`date`]
+   vsql -c "UPDATE autoscale.launches SET status='SYNC REPLACEMENT NODES IN CLUSTER' WHERE is_running AND replace_node_address IS NOT NULL; COMMIT" > /dev/null
+   # run install_vertica with no --add-hosts argument - this will setup keys etc. on replacement nodes
+   sudo /opt/vertica/sbin/install_vertica --point-to-point -L $autoscaleDir/license.dat --dba-user-password-disabled --data-dir /vertica/data --ssh-identity $autoscaleDir/key.pem --failure-threshold HALT
+   DB=$(admintools -t show_active_db)
+   for repNode in `echo $replace_nodes | sed -e 's/,/ /g'`
+   do
+      vsql -c "UPDATE autoscale.launches SET status='START VERTICA ON REPLACEMENT NODE' WHERE replace_node_address='$repNode' ; COMMIT" > /dev/null
+      echo Create empty catalog directory on [$repNode] to active DB [$DB] [`date`]
+      node_name=$(vsql -qAt -c "SELECT node_name from nodes where node_address='$repNode'" )
+      catalog_dir="/vertica/data/$DB/${node_name}_catalog"
+      ssh $repNode mkdir -p $catalog_dir
+      echo Starting Vertica on [$repNode] [`date`]
+      admintools -t restart_node -s $repNode -d $DB
+   done
+fi
+
+
+echo install autoscale scripts and crontab schedule on each new node [$new_nodes,$replace_nodes] [`date`]
+for n in `echo $new_nodes,$replace_nodes | sed -e 's/,/ /g'`
 do
-   ssh $n mkdir -p /home/dbadmin/autoscale
+   ssh $n -o "StrictHostKeyChecking no" mkdir -p /home/dbadmin/autoscale
    scp -r $autoscaleDir/*.sh $autoscaleDir/key.pem $autoscaleDir/license.dat $n:/home/dbadmin/autoscale
    ssh $n chmod ug+sx $autoscaleDir/*.sh
    ssh $n '(echo "* * * * * /home/dbadmin/autoscale/read_scaledown_queue.sh" | crontab -)'
@@ -69,15 +96,20 @@ echo configure external stored procedures on new nodes [`date`]
 admintools -t install_procedure -d VMart -f $autoscaleDir/add_nodes.sh
 admintools -t install_procedure -d VMart -f $autoscaleDir/remove_nodes.sh
 
-echo Updating launches table - COMPLETE
+echo check if nodes are successfully added and update status in 'launches' [`date`]
 end_time=$(date +"%Y-%m-%d %H:%M:%S")
+for n in `echo $new_nodes,$replace_nodes | sed -e 's/,/ /g'`
+do
+is_inDB=$(vsql -qAt -c "select count(*) from nodes where node_address='$n'")
+[ $is_inDB -eq 0 ] && complete="FAIL - NOT IN DB" || complete="SUCCESS"
 cat > /tmp/update_launches.sql <<EOF
-UPDATE autoscale.launches SET added_by_node='$myIp', start_time='$start_time', end_time='$end_time', status = 'COMPLETE' where reservationid='$resId';
-UPDATE autoscale.launches SET duration_s = datediff(SECOND,start_time,end_time) where reservationid='$resId';
-UPDATE autoscale.launches SET is_launched=1 where reservationid='$resId';
+UPDATE autoscale.launches SET end_time='$end_time', status = '$complete' where node_address='$n';
+UPDATE autoscale.launches SET duration_s = datediff(SECOND,start_time,end_time) where node_address='$n';
+UPDATE autoscale.launches SET is_running=0 where node_address='$n';
 COMMIT
 EOF
-vsql -f /tmp/update_launches.sql ;
+vsql -f /tmp/update_launches.sql > /dev/null ;
+done
 
 echo Done! [`date`]
 exit 0

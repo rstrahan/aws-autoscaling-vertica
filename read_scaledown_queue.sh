@@ -33,8 +33,9 @@ while [ 1 ]; do
       lifecycleActionToken=$(echo "$msgBody" | python -c 'import sys, json; print json.load(sys.stdin)["LifecycleActionToken"]')
       eC2InstanceId=$(echo "$msgBody" | python -c 'import sys, json; print json.load(sys.stdin)["EC2InstanceId"]')
       privateIp=$(vsql -qAt -c "select distinct node_address from autoscale.launches where ec2_instanceid='$eC2InstanceId'")
+      publicIp=$(vsql -qAt -c "select distinct node_public_address from autoscale.launches where ec2_instanceid='$eC2InstanceId'")
       # Add each terminating instance to the autoscale.terminations table
-      echo "$myIp|$time|$eC2InstanceId|$privateIp|$lifecycleActionToken|COLLATING INSTANCES|0" | vsql -c "COPY autoscale.terminations (queued_by_node, start_time, ec2_instanceid, node_address, lifecycle_action_token, status, is_terminated) FROM STDIN" 
+      echo "$myIp|$time|$eC2InstanceId|$privateIp|$publicIp|$lifecycleActionToken|COLLATING INSTANCES|1" | vsql -c "COPY autoscale.terminations (queued_by_node, start_time, ec2_instanceid, node_address, node_public_address, lifecycle_action_token, status, is_running) FROM STDIN" 
       if [ $? -ne 0 ]; then 
          echo Unable to add to autoscale.terminations - exiting without deleting message
          exit 1
@@ -57,16 +58,16 @@ fi
 
 # make sure termination list has settled - ie that nodes aren't still being added
 lastCount=0
-thisCount=$(vsql -qAt -c "select count(*) from autoscale.terminations where not is_terminated")
+thisCount=$(vsql -qAt -c "select count(*) from autoscale.terminations where is_running")
 while [ $lastCount -ne $thisCount ]; do
    echo Ensure queued node count is stable - $thisCount nodes. Sleep 30s.
    lastCount=$thisCount
    sleep 30
-   thisCount=$(vsql -qAt -c "select count(*) from autoscale.terminations where not is_terminated")
+   thisCount=$(vsql -qAt -c "select count(*) from autoscale.terminations where is_running")
 done
 
 # Remove nodes on an active DB node that is NOT currently queued for termination
-connectTo=$(vsql -qAt -c "select node_address from nodes where node_state='UP' EXCEPT select node_address from autoscale.terminations where not is_terminated LIMIT 1")
+connectTo=$(vsql -qAt -c "select node_address from nodes where node_state='UP' EXCEPT select node_address from autoscale.terminations where is_running LIMIT 1")
 if [ -z "$connectTo" ]; then
    echo "All nodes queued for deletion! Connect locally [$myIp]"
    connectTo=$myIp

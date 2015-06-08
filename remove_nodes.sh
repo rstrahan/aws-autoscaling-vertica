@@ -25,23 +25,23 @@ for fd in $(ls /proc/$$/fd); do
 done
 
 # Get this node's IP
-myIp=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4); echo PrivateIP: $privateIp
+myIp=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4); echo PrivateIP: $myIp
 
 # make sure termination list has settled - ie that nodes aren't still being added
 lastCount=0
-thisCount=$(vsql -qAt -c "select count(*) from autoscale.terminations where not is_terminated")
+thisCount=$(vsql -qAt -c "select count(*) from autoscale.terminations where is_running")
 while [ $lastCount -ne $thisCount ]; do
    echo Ensure queued node count is stable - $thisCount nodes. Sleep 30s.
    lastCount=$thisCount
    sleep 30 
-   thisCount=$(vsql -qAt -c "select count(*) from autoscale.terminations where not is_terminated")
+   thisCount=$(vsql -qAt -c "select count(*) from autoscale.terminations where is_running")
 done
 
 echo retrieve details for instances queued for termination, and update their status [`date`]
-nodes=$(vsql -qAt -c "select node_address from autoscale.terminations where not is_terminated" | paste -d, -s); 
-instances=$(vsql -qAt -c "select ec2_instanceid from autoscale.terminations where not is_terminated" | paste -d, -s); 
-tokens=$(vsql -qAt -c "select lifecycle_action_token from autoscale.terminations where not is_terminated");
-vsql -c "UPDATE autoscale.terminations SET removed_by_node = '$myIp', status = 'REMOVING' where not is_terminated; COMMIT" ;
+nodes=$(vsql -qAt -c "select node_address from autoscale.terminations where is_running" | paste -d, -s); 
+instances=$(vsql -qAt -c "select ec2_instanceid from autoscale.terminations where is_running" | paste -d, -s); 
+tokens=$(vsql -qAt -c "select lifecycle_action_token from autoscale.terminations where is_running");
+vsql -c "UPDATE autoscale.terminations SET removed_by_node = '$myIp', status = 'REMOVING' where is_running; COMMIT" ;
 
 # Remove Node from Database
 # This step does a rebalance - could take a while, so we'll run it as a background job
@@ -79,16 +79,20 @@ do
    aws autoscaling complete-lifecycle-action --lifecycle-action-token $token --lifecycle-hook-name ${autoscaling_group_name}_ScaleDown --auto-scaling-group-name ${autoscaling_group_name} --lifecycle-action-result CONTINUE
 done
 
-echo Updating terminations table - COMPLETE
+echo Check if nodes are successfully removed and update status in 'terminations' [`date`]
 end_time=$(date +"%Y-%m-%d %H:%M:%S")
+for n in `echo $nodes | sed -e 's/,/ /g'`
+do
+is_inDB=$(vsql -qAt -c "select count(*) from nodes where node_address='$n'")
+[ $is_inDB -eq 0 ] && complete="SUCCESS" || complete="FAIL - NODE NOT REMOVED"
 cat > /tmp/update_terminations.sql <<EOF
-UPDATE autoscale.terminations SET end_time='$end_time' where not is_terminated; 
-UPDATE autoscale.terminations SET duration_s = datediff(SECOND,start_time,end_time) where not is_terminated; 
-UPDATE autoscale.terminations SET status = 'COMPLETE' where not is_terminated; 
-UPDATE autoscale.terminations SET is_terminated=1 where not is_terminated;
+UPDATE autoscale.terminations SET end_time='$end_time', status = '$complete' where node_address='$n' and is_running;
+UPDATE autoscale.terminations SET duration_s = datediff(SECOND,start_time,end_time) where node_address='$n' and is_running;
+UPDATE autoscale.terminations SET is_running=0 where node_address='$n' and is_running;
 COMMIT
 EOF
 vsql -f /tmp/update_terminations.sql ;
+done
 
 echo Done! [`date`]
 exit 0
