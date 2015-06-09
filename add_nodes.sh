@@ -10,9 +10,6 @@ autoscaleDir=/home/dbadmin/autoscale
 if [ ! -t 0 ]; then exec >> $autoscaleDir/add_nodes.log 2>&1; fi
 echo -e "\n\nadd_nodes: [`date`]\n================================================\n"
 
-# Get this node's IP
-myIp=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4); echo PrivateIP: $myIp
-
 # prevent concurrent executions
 IAM=(`pgrep -d " " -f ${0//*\//}`)
 [ ${#IAM[@]} -gt 1 ] && { echo add_nodes.sh already running - exiting 1>&2; exit 1; }
@@ -27,6 +24,9 @@ for fd in $(ls /proc/$$/fd); do
       ;;
   esac
 done
+
+# Get this node's IP
+myIp=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4); echo PrivateIP: $myIp
 
 # update launches table
 start_time=$(date +"%Y-%m-%d %H:%M:%S")
@@ -67,6 +67,13 @@ fi
 if [ ! -z "$replace_nodes" ]; then
    echo Sync replacement nodes [$replace_nodes] to cluster [`date`]
    vsql -c "UPDATE autoscale.launches SET status='SYNC REPLACEMENT NODES IN CLUSTER' WHERE is_running AND replace_node_address IS NOT NULL; COMMIT" > /dev/null
+   # remove existing entries from known_hosts to ssh host key changed error
+   for repNode in `echo $replace_nodes | sed -e 's/,/ /g'`
+   do
+      echo "Remove existing entries for [$repNode] from .ssh/known_hosts"
+      sudo sh -c "grep -v $repNode < /root/.ssh/known_hosts > /tmp/known_hosts; mv /tmp/known_hosts /root/.ssh/known_hosts"
+      grep -v $repNode < /home/dbadmin/.ssh/known_hosts > /tmp/known_hosts; mv /tmp/known_hosts /home/dbadmin/.ssh/known_hosts
+   done
    # run install_vertica with no --add-hosts argument - this will setup keys etc. on replacement nodes
    sudo /opt/vertica/sbin/install_vertica --point-to-point -L $autoscaleDir/license.dat --dba-user-password-disabled --data-dir /vertica/data --ssh-identity $autoscaleDir/key.pem --failure-threshold HALT
    DB=$(admintools -t show_active_db)
@@ -76,7 +83,7 @@ if [ ! -z "$replace_nodes" ]; then
       echo Create empty catalog directory on [$repNode] to active DB [$DB] [`date`]
       node_name=$(vsql -qAt -c "SELECT node_name from nodes where node_address='$repNode'" )
       catalog_dir="/vertica/data/$DB/${node_name}_catalog"
-      ssh $repNode mkdir -p $catalog_dir
+      ssh -o "StrictHostKeyChecking no" $repNode mkdir -p $catalog_dir
       echo Starting Vertica on [$repNode] [`date`]
       admintools -t restart_node -s $repNode -d $DB
    done
@@ -103,9 +110,9 @@ do
 is_inDB=$(vsql -qAt -c "select count(*) from nodes where node_address='$n'")
 [ $is_inDB -eq 0 ] && complete="FAIL - NOT IN DB" || complete="SUCCESS"
 cat > /tmp/update_launches.sql <<EOF
-UPDATE autoscale.launches SET end_time='$end_time', status = '$complete' where node_address='$n';
-UPDATE autoscale.launches SET duration_s = datediff(SECOND,start_time,end_time) where node_address='$n';
-UPDATE autoscale.launches SET is_running=0 where node_address='$n';
+UPDATE autoscale.launches SET end_time='$end_time', status = '$complete' where node_address='$n' or replace_node_address='$n';
+UPDATE autoscale.launches SET duration_s = datediff(SECOND,start_time,end_time) where node_address='$n' or replace_node_address='$n';
+UPDATE autoscale.launches SET is_running=0 where node_address='$n' or replace_node_address='$n';
 COMMIT
 EOF
 vsql -f /tmp/update_launches.sql > /dev/null ;

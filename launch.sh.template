@@ -113,8 +113,35 @@ done
 
 # Add all new instances from this reservation to the database
 # NOTE - first instance to attempt this will succeed (only one will run, due to concurrency locking)
-echo Connect to $connectTo to add queued nodes to cluster [`date`]
+echo "Connect to $connectTo to add queued nodes to cluster - autoscale.add_nodes() [`date`]"
 vsql -U dbadmin -h $connectTo -c "SELECT autoscale.add_nodes()"
+sleep 5
+
+echo Check status
+is_running=$(vsql -qAt -U dbadmin -h $connectTo -c "select count(*) from autoscale.launches where is_running")
+if [ $is_running -gt 0 ]; then
+   # check for (remote) possibility that multiple nodes deadlocked on concurrency check. 
+   # if that happened, there will be no 'added_by_node' values
+   added_by_node=$(vsql -qAt -U dbadmin -h $connectTo -c "select distinct added_by_node from autoscale.launches where is_running")
+   if [ -z "$added_by_node" ]; then
+      echo "Nodes not yet added, and not in progress - encountered concurrency check deadlock"
+      echo "Backing off for random delay (1-30 seconds) and call autoscale.add_nodes() again [`date`]"
+      sleep `shuf -i1-30 -n1`
+      echo "Calling autoscale.add_nodes() [`date`]"
+      vsql -U dbadmin -h $connectTo -c "SELECT autoscale.add_nodes()"
+      sleep 5
+      is_running=$(vsql -qAt -U dbadmin -h $connectTo -c "select count(*) from autoscale.launches where is_running")
+   fi
+fi
+if [ $is_running -gt 0 ]; then
+   added_by_node=$(vsql -qAt -U dbadmin -h $connectTo -c "select distinct added_by_node from autoscale.launches where is_running")
+   echo "Queued launches are being processed by node: $added_by_node"
+else
+   echo "Queued launches completed. Node status:"
+   vsql -qAt -U dbadmin -h $connectTo -c "select node_address || ':' || node_state from nodes where node_address IN ('$privateIp','$downNode')"
+fi
+
+
 echo Done! [`date`]
 ) &  # run script in the background so we don't block instance startup
 exit 0
