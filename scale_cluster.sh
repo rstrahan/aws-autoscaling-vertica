@@ -11,7 +11,6 @@ Setting
  - min instances: 	$min
  - max instances: 	$max
  - desired instances:	$desired
-
 EOF
 
 aws autoscaling update-auto-scaling-group --auto-scaling-group-name $autoscaling_group_name --min-size=$min --max-size=$max --desired-capacity=$desired

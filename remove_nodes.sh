@@ -27,21 +27,30 @@ done
 # Get this node's IP
 myIp=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4); echo PrivateIP: $myIp
 
-# make sure termination list has settled - ie that nodes aren't still being added
-lastCount=0
-thisCount=$(vsql -qAt -c "select count(*) from autoscale.terminations where is_running")
-while [ $lastCount -ne $thisCount ]; do
-   echo Ensure queued node count is stable - $thisCount nodes. Sleep 30s.
-   lastCount=$thisCount
-   sleep 30 
-   thisCount=$(vsql -qAt -c "select count(*) from autoscale.terminations where is_running")
-done
-
 echo retrieve details for instances queued for termination, and update their status [`date`]
 nodes=$(vsql -qAt -c "select node_address from autoscale.terminations where is_running" | paste -d, -s); 
 instances=$(vsql -qAt -c "select ec2_instanceid from autoscale.terminations where is_running" | paste -d, -s); 
 tokens=$(vsql -qAt -c "select lifecycle_action_token from autoscale.terminations where is_running");
 vsql -c "UPDATE autoscale.terminations SET removed_by_node = '$myIp', status = 'REMOVING' where is_running; COMMIT" ;
+
+# If there are any DOWN nodes, no point continuing since database cannot be modified.
+downNodes=$(vsql -qAt -c "SELECT node_address FROM nodes WHERE node_state='DOWN'")
+if [ ! -z "$downNodes" ]; then
+   status="DOWN NODES [$downNodes] will be replaced rather than removed"
+   echo "$status. Will not remove [$nodes]"
+   end_time=$(date +"%Y-%m-%d %H:%M:%S")
+   cat > /tmp/update_terminations.sql <<EOF
+UPDATE autoscale.terminations SET end_time='$end_time', status = '$status' where is_running;
+UPDATE autoscale.terminations SET duration_s = datediff(SECOND,start_time,end_time) where is_running;
+UPDATE autoscale.terminations SET is_running=0 where is_running;
+COMMIT
+EOF
+   vsql -f /tmp/update_terminations.sql ;
+   echo "Done! [`date`]"
+   exit 0
+fi
+
+# No DOWN nodes - continue..
 
 # Remove Node from Database
 # This step does a rebalance - could take a while, so we'll run it as a background job

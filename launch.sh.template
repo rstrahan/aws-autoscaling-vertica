@@ -14,6 +14,7 @@ region=YOUR_REGION
 autoscaling_group_name=YOUR_AUTOSCALING_GROUP_NAME
 
 
+
 echo Install & configure AWS CLI [`date`]
 cd /tmp
 curl https://s3.amazonaws.com/aws-cli/awscli-bundle.zip -o awscli-bundle.zip
@@ -73,9 +74,17 @@ echo "Check if there are any DOWN nodes."
 vsql -U dbadmin -h $connectTo -c "UPDATE autoscale.launches SET replace_node_address = (SELECT node_address FROM nodes WHERE node_state='DOWN' EXCEPT SELECT node_address FROM autoscale.launches WHERE is_running LIMIT 1) WHERE ec2_instanceid='$instId'; COMMIT;"
 downNode=$(vsql -qAt -U dbadmin -h $connectTo -c "SELECT replace_node_address FROM autoscale.launches WHERE ec2_instanceid='$instId'")
 if [ ! -z "$downNode" ]; then
-   echo "Adopting Private IP Address of DOWN node [$downNode]. Original Private IP Address [$privateIp]" 
+   echo "Adopting Private IP Address of DOWN node [$downNode]. Original Private IP Address [$privateIp]"
    aws ec2 assign-private-ip-addresses --network-interface $eni --private-ip-addresses $downNode
    ip address add $downNode/$mask brd + dev eth0
+   echo "Modify default route to use new IP address as the src"
+   ip route delete $subnetCIDR
+   ip route add $subnetCIDR dev eth0 src $downNode
+   echo "Change hostname to use new IP"
+   new_hostname=`echo "ip-$downNode" | sed -e 's/\./-/g'`
+   hostname $new_hostname
+   echo -e "NETWORKING=yes\nHOSTNAME=$new_hostname.localdomain" > /etc/sysconfig/network
+   echo "$downNode $new_hostname" >> /etc/hosts
 fi
 
 
@@ -87,11 +96,11 @@ for instance in $resInstances; do
 count=600
    while [ $count -ne 0 ];  do
       launched=$(vsql -qAt -U dbadmin -h $connectTo -c "select count(*) from autoscale.launches where ec2_instanceid='$instance'")
-      if [ "$launched" -gt 0 ]; then 
+      if [ "$launched" -gt 0 ]; then
          # instance has created its log, now check ssh port using private IP address
-	 node_address=$(vsql -qAt -U dbadmin -h $connectTo -c "select nvl(replace_node_address, node_address) from autoscale.launches where ec2_instanceid='$instance'")
+         node_address=$(vsql -qAt -U dbadmin -h $connectTo -c "select nvl(replace_node_address, node_address) from autoscale.launches where ec2_instanceid='$instance'")
          ssh_port=22
-         nc -zw3 $node_address $ssh_port 
+         nc -zw3 $node_address $ssh_port
          if [ $? -eq 0 ]; then
              # instance is accepting ssh on the assigned node_address.. we are good to go! Break out of this loop
              break ;
@@ -120,7 +129,7 @@ sleep 5
 echo Check status
 is_running=$(vsql -qAt -U dbadmin -h $connectTo -c "select count(*) from autoscale.launches where is_running")
 if [ $is_running -gt 0 ]; then
-   # check for (remote) possibility that multiple nodes deadlocked on concurrency check. 
+   # check for (remote) possibility that multiple nodes deadlocked on concurrency check.
    # if that happened, there will be no 'added_by_node' values
    added_by_node=$(vsql -qAt -U dbadmin -h $connectTo -c "select distinct added_by_node from autoscale.launches where is_running")
    if [ -z "$added_by_node" ]; then

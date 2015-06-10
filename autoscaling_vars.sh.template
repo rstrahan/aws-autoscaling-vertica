@@ -37,4 +37,5 @@ database_name=NEW_DATABASE_NAME				# E.g. VMart
 password=PASSWORD				
 license_file=/path/to/license_file                      # path to license file, or "CE" to use the Community Edition License - 3 nodes limit
 k_safety=1                                              # For autoscaling between 1 and 3 nodes, set k_safety to 0 (not recommended!)
+replace_down_node_after=5				# number of minutes to wait before replacing a DOWN node. Set to 0 to disable.
 

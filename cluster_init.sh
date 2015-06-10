@@ -10,6 +10,3 @@ privateIp=$(aws --output=text ec2 describe-instances --filters Name=tag-key,Valu
 sudo /opt/vertica/sbin/install_vertica --add-hosts $privateIp --point-to-point --ssh-identity $autoscale_dir/key.pem -L $license --dba-user-password-disabled --data-dir /vertica/data -Y
 
 
-# Configure cron to check for ScaleDown SQS messages, every minute
-echo "* * * * * /home/dbadmin/autoscale/read_scaledown_queue.sh" | crontab -
-

@@ -67,12 +67,19 @@ fi
 if [ ! -z "$replace_nodes" ]; then
    echo Sync replacement nodes [$replace_nodes] to cluster [`date`]
    vsql -c "UPDATE autoscale.launches SET status='SYNC REPLACEMENT NODES IN CLUSTER' WHERE is_running AND replace_node_address IS NOT NULL; COMMIT" > /dev/null
-   # remove existing entries from known_hosts to ssh host key changed error
-   for repNode in `echo $replace_nodes | sed -e 's/,/ /g'`
+   # remove existing entries from .ssh/known_hosts to avoid host key changed error
+   for existingNode in `vsql -qAt -c "select node_address from nodes"`
    do
-      echo "Remove existing entries for [$repNode] from .ssh/known_hosts"
-      sudo sh -c "grep -v $repNode < /root/.ssh/known_hosts > /tmp/known_hosts; mv /tmp/known_hosts /root/.ssh/known_hosts"
-      grep -v $repNode < /home/dbadmin/.ssh/known_hosts > /tmp/known_hosts; mv /tmp/known_hosts /home/dbadmin/.ssh/known_hosts
+      for repNode in `echo $replace_nodes | sed -e 's/,/ /g'`
+      do
+         echo "Remove existing entries for [$repNode] from .ssh/known_hosts on node [$existingNode]"
+         ssh -o "StrictHostKeyChecking no" $existingNode '(
+            # for root user
+            sudo sh -c "grep -v $repNode < /root/.ssh/known_hosts > /tmp/known_hosts; mv /tmp/known_hosts /root/.ssh/known_hosts"
+            # for dbadmin user
+            grep -v $repNode < /home/dbadmin/.ssh/known_hosts > /tmp/known_hosts; mv /tmp/known_hosts /home/dbadmin/.ssh/known_hosts
+         )'
+      done
    done
    # run install_vertica with no --add-hosts argument - this will setup keys etc. on replacement nodes
    sudo /opt/vertica/sbin/install_vertica --point-to-point -L $autoscaleDir/license.dat --dba-user-password-disabled --data-dir /vertica/data --ssh-identity $autoscaleDir/key.pem --failure-threshold HALT
@@ -96,7 +103,7 @@ do
    ssh $n -o "StrictHostKeyChecking no" mkdir -p /home/dbadmin/autoscale
    scp -r $autoscaleDir/*.sh $autoscaleDir/key.pem $autoscaleDir/license.dat $n:/home/dbadmin/autoscale
    ssh $n chmod ug+sx $autoscaleDir/*.sh
-   ssh $n '(echo "* * * * * /home/dbadmin/autoscale/read_scaledown_queue.sh" | crontab -)'
+   ssh $n '(echo -e "* * * * * /home/dbadmin/autoscale/read_scaledown_queue.sh\n* * * * * /home/dbadmin/autoscale/down_node_check.sh"  | crontab -)'
 done
 
 echo configure external stored procedures on new nodes [`date`]

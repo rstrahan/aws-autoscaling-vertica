@@ -43,9 +43,9 @@ if [ $? -ne 0 ]; then
    exit 1
 fi
 
-echo "Configure cron to check for ScaleDown SQS messages, every minute"
+echo "Configure cron to check for ScaleDown SQS messages and DOWN nodes, every minute"
 ssh -i $pem_file dbadmin@$publicIp '(
-   echo "* * * * * /home/dbadmin/autoscale/read_scaledown_queue.sh" | crontab -
+   echo -e "* * * * * /home/dbadmin/autoscale/read_scaledown_queue.sh\n* * * * * /home/dbadmin/autoscale/down_node_check.sh" | crontab -
 )'
 if [ $? -ne 0 ]; then
    echo "Failed to setup cron task"
