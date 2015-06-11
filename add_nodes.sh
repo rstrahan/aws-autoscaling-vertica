@@ -26,7 +26,7 @@ for fd in $(ls /proc/$$/fd); do
 done
 
 # Get this node's IP
-myIp=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4); echo PrivateIP: $myIp
+myIp=$(hostname -I | awk '{print $NF}'); echo My IP: $myIp
 
 # update launches table
 start_time=$(date +"%Y-%m-%d %H:%M:%S")

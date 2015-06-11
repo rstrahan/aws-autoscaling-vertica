@@ -25,7 +25,7 @@ for fd in $(ls /proc/$$/fd); do
 done
 
 # Get this node's IP
-myIp=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4); echo PrivateIP: $myIp
+myIp=$(hostname -I | awk '{print $NF}'); echo My IP: $myIp
 
 echo retrieve details for instances queued for termination, and update their status [`date`]
 nodes=$(vsql -qAt -c "select node_address from autoscale.terminations where is_running" | paste -d, -s); 

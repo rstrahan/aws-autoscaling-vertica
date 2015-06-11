@@ -12,7 +12,7 @@ if [ ! -t 0 ]; then exec >> $autoscaleDir/read_scaledown_queue.log 2>&1; fi
 echo read_scaledown_queue.sh: [`date`]
 
 # Get this node's IP
-myIp=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)
+myIp=$(hostname -I | awk '{print $NF}')
 
 # Get URL for ScaleDown SQS queue
 scaleDown_url=$( aws --output=text sqs list-queues | grep "${autoscaling_group_name}_ScaleDown" | awk '{print $2}') 
@@ -33,15 +33,19 @@ while [ 1 ]; do
       lifecycleActionToken=$(echo "$msgBody" | python -c 'import sys, json; print json.load(sys.stdin)["LifecycleActionToken"]')
       eC2InstanceId=$(echo "$msgBody" | python -c 'import sys, json; print json.load(sys.stdin)["EC2InstanceId"]')
       privateIp=$(vsql -qAt -c "select distinct node_address from autoscale.launches where ec2_instanceid='$eC2InstanceId'")
-      publicIp=$(vsql -qAt -c "select distinct node_public_address from autoscale.launches where ec2_instanceid='$eC2InstanceId'")
-      # Add each terminating instance to the autoscale.terminations table
-      echo "$myIp|$time|$eC2InstanceId|$privateIp|$publicIp|$lifecycleActionToken|COLLATING INSTANCES|1" | vsql -c "COPY autoscale.terminations (queued_by_node, start_time, ec2_instanceid, node_address, node_public_address, lifecycle_action_token, status, is_running) FROM STDIN" 
-      if [ $? -ne 0 ]; then 
-         echo Unable to add to autoscale.terminations - exiting without deleting message
-         exit 1
+      if [ ! -z "$privateIp" ]; then
+         publicIp=$(vsql -qAt -c "select distinct node_public_address from autoscale.launches where ec2_instanceid='$eC2InstanceId'")
+         # Add each terminating instance to the autoscale.terminations table
+         echo "$myIp|$time|$eC2InstanceId|$privateIp|$publicIp|$lifecycleActionToken|COLLATING INSTANCES|1" | vsql -c "COPY autoscale.terminations (queued_by_node, start_time, ec2_instanceid, node_address, node_public_address, lifecycle_action_token, status, is_running) FROM STDIN" 
+         if [ $? -ne 0 ]; then 
+            echo Unable to add to autoscale.terminations - exiting without deleting message
+            exit 1
+         fi
+         echo "Node [$privateIp] queued for termination"
+         ((i=i+1))
+      else
+         echo "No Private IP found for [$eC2InstanceId] in autoscale.launches. Perhaps a rogue (old) message? Skipping"
       fi
-      echo "Node [$privateIp] queued for termination"
-      ((i=i+1))
    else
       echo "Skipping unimportant message: autoscaling:TEST_NOTIFICATION => $msgBody"
    fi
@@ -67,7 +71,7 @@ while [ $lastCount -ne $thisCount ]; do
 done
 
 # Remove nodes on an active DB node that is NOT currently queued for termination
-connectTo=$(vsql -qAt -c "select node_address from nodes where node_state='UP' EXCEPT select node_address from autoscale.terminations where is_running LIMIT 1")
+connectTo=$(vsql -qAt -c "select node_address from nodes where node_state='UP' AND node_name NOT IN (select node_address from autoscale.terminations where is_running) ORDER BY node_name LIMIT 1")
 if [ -z "$connectTo" ]; then
    echo "All nodes queued for deletion! Connect locally [$myIp]"
    connectTo=$myIp

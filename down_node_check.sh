@@ -11,7 +11,7 @@ time=$( date +"%Y-%m-%d %H:%M:%S")
 if [ ! -t 0 ]; then exec >> $autoscaleDir/down_node_check.log 2>&1; fi
 echo down_node_check.sh: [`date`]
 
-myIp=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)
+myIp=$(hostname -I | awk '{print $NF}')
 
 # check nodes table for DOWN nodes
 if [ ! -z "$replace_down_node_after" -a $replace_down_node_after -gt 0 ]; then
@@ -21,8 +21,10 @@ if [ ! -z "$replace_down_node_after" -a $replace_down_node_after -gt 0 ]; then
    do
       echo "Node [$downNode] DOWN for more than $replace_down_node_after minutes."
       downSince=$(vsql -qAt -c "SELECT node_down_since FROM nodes WHERE node_address='$downNode'")
-      # already detected?
-      isDetected=$(vsql -qAt -c "select count(*) from autoscale.downNodes WHERE node_address='$downNode' AND node_down_since='$downSince'")
+      # already detected? 
+        # random short delay minimises chances of multiple simultaneous detection / duplicate downNodes entries
+      sleep `shuf -i0-20 -n1` 
+      isDetected=$(vsql -qAt -c "select count(*) from autoscale.downNodes WHERE node_address='$downNode' AND datediff(MINUTE,node_down_since,'$downSince') = 0")
       if [ $isDetected -eq 0 ]; then
          # not already detected.. initiate termination
          instId=$(vsql -qAt -c "SELECT ec2_instanceid FROM autoscale.launches WHERE node_address='$downNode' OR replace_node_address='$downNode' ORDER BY start_time DESC LIMIT 1")
@@ -32,7 +34,7 @@ if [ ! -z "$replace_down_node_after" -a $replace_down_node_after -gt 0 ]; then
          echo "Terminating EC2 instanceId [$instId]"
          aws ec2 terminate-instances --instance-ids $instId
          if [ $? -eq 0 ]; then
-            status="AWS EC2 termination OK - instanceId [$instId] / IP [$downNode]. This will trigger an auto scale replacement."
+            status="AWS EC2 instance [$instId] / IP [$downNode] terminated. This will trigger auto scale to launch a replacement."
          else
             status="Error Returned [$?]: Cmd> aws ec2 terminate-instances --instance-ids $instId"
          fi
