@@ -32,7 +32,7 @@ while [ 1 ]; do
       lifecycleTransition=$(echo "$msgBody" | python -c 'import sys, json; print json.load(sys.stdin)["LifecycleTransition"]')
       lifecycleActionToken=$(echo "$msgBody" | python -c 'import sys, json; print json.load(sys.stdin)["LifecycleActionToken"]')
       eC2InstanceId=$(echo "$msgBody" | python -c 'import sys, json; print json.load(sys.stdin)["EC2InstanceId"]')
-      privateIp=$(vsql -qAt -c "select distinct node_address from autoscale.launches where ec2_instanceid='$eC2InstanceId'")
+      privateIp=$(vsql -qAt -c "select distinct nvl(replace_node_address,node_address) from autoscale.launches where ec2_instanceid='$eC2InstanceId'")
       if [ ! -z "$privateIp" ]; then
          publicIp=$(vsql -qAt -c "select distinct node_public_address from autoscale.launches where ec2_instanceid='$eC2InstanceId'")
          # Add each terminating instance to the autoscale.terminations table

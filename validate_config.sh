@@ -33,5 +33,17 @@ if [ $k_safety -ne 0 -a $k_safety -ne 1 -a $k_safety -ne 2 ]; then
    echo "Invalid value for k_safety [$k_safety]. Database K-Safety must be 0, 1, or 2 (1 recommended). Aborting"
    exit 1
 fi
+
+# DOWN Node Replacement
+[ $replace_down_node_after -eq 0 ] \
+   && echo "DOWN Nodes will not be automatically replaced" \
+   || echo "DOWN Nodes will be automatically terminated and replaced after $replace_down_node_after minutes"
                                                               
+if [ $min -gt $max -o $desired -lt $min -o $desired -gt $max ]; then
+   echo "Cluster size error: min <= desired <= max [min $min, desired $desired, max $max]"
+   exit 1
+else
+   echo "Cluster size: [min $min, desired $desired, max $max]"
+fi
+
 echo "Configuration OK"

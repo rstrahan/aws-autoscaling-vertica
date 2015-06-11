@@ -150,6 +150,13 @@ When you are done editing the config script, check it with the validation script
 
 # TODO
 
-- Usage trigger for scaling
+- Usage triggers for scaling
 - Schedule trigger for scaling
-- Node Down replacement trigger (when vertica things node is down!)
+- Test at scale - best scaling factor, rebalance time, etc.
+- Placement Group problems: (should PG be optional?)
+Description: Launching a new EC2 instance.  Status Reason: We currently do not have sufficient capacity to launch all of the additional requested instances into Placement Group 'BobsPlacementGroup'.  You may be able to satisfy your full cluster requirement by first terminating all of the existing instances in Placement Group 'BobsPlacementGroup' then launching the full cluster of required instances into Placement Group 'BobsPlacementGroup' in a single launch request. Launching EC2 instance failed.
+- configuration in DB tables instead of file.. make config dynamic
+NEXT
+- ELB
+- auto DR cluster?
+

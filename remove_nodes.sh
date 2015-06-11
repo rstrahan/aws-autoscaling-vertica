@@ -34,7 +34,7 @@ tokens=$(vsql -qAt -c "select lifecycle_action_token from autoscale.terminations
 vsql -c "UPDATE autoscale.terminations SET removed_by_node = '$myIp', status = 'REMOVING' where is_running; COMMIT" ;
 
 # If there are any DOWN nodes, no point continuing since database cannot be modified.
-downNodes=$(vsql -qAt -c "SELECT node_address FROM nodes WHERE node_state='DOWN'")
+downNodes=$(vsql -qAt -c "SELECT node_address FROM nodes WHERE node_state='DOWN'" | paste -s -d" ")
 if [ ! -z "$downNodes" ]; then
    status="DOWN NODES [$downNodes] will be replaced rather than removed"
    echo "$status. Will not remove [$nodes]"
