@@ -8,7 +8,7 @@ instanceIds=$(aws --output=text ec2 describe-instances --filters Name=tag-key,Va
 
 for instanceId in $instanceIds
 do
-   privateIps=$(aws --output=text ec2 describe-instances --instance-id $instanceId --query "Reservations[*].Instances[*].NetworkInterfaces[*].PrivateIpAddresses[*].PrivateIpAddress")
+   privateIps=$(aws --output=text ec2 describe-instances --instance-id $instanceId --query "Reservations[*].Instances[*].NetworkInterfaces[*].PrivateIpAddresses[*].PrivateIpAddress" | awk '{for (i=NF;i>0;i--){printf $i" "}}')
    publicIps=$(aws --output=text ec2 describe-instances --instance-id $instanceId --query "Reservations[*].Instances[*].NetworkInterfaces[*].PrivateIpAddresses[*].Association.PublicIp")
    echo "$instanceId: PublicIP [$publicIps], PrivateIP [$privateIps]"
 done

@@ -33,7 +33,7 @@ vsql -c " SELECT ENABLE_LOCAL_SEGMENTS();"
 
 # Create logging tables - 
 vsql -c "CREATE TABLE autoscale.launches (added_by_node varchar(15), start_time timestamp, end_time timestamp, duration_s int, reservationid varchar(20), ec2_instanceid varchar(20), node_address varchar(15), replace_node_address varchar(15), node_public_address varchar(15), status varchar(40), is_running boolean, comment varchar(128)) UNSEGMENTED ALL NODES";
-vsql -c "CREATE TABLE autoscale.terminations (queued_by_node varchar(15), removed_by_node varchar(15), start_time timestamp, end_time timestamp, duration_s int, ec2_instanceid varchar(20), node_address varchar(15), node_public_address varchar(15), lifecycle_action_token varchar(128), status varchar(40), is_running boolean) UNSEGMENTED ALL NODES";
+vsql -c "CREATE TABLE autoscale.terminations (queued_by_node varchar(15), removed_by_node varchar(15), start_time timestamp, end_time timestamp, duration_s int, ec2_instanceid varchar(20), node_address varchar(15), node_public_address varchar(15), lifecycle_action_token varchar(128), status varchar(128), is_running boolean) UNSEGMENTED ALL NODES";
 vsql -c "CREATE TABLE autoscale.downNodes (detected_by_node varchar(15), trigger_termination_time timestamp, node_down_since timestamp, ec2_instanceid varchar(20), node_address varchar(15), status varchar(128)) UNSEGMENTED ALL NODES";
 
 

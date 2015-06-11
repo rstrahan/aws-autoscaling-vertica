@@ -86,7 +86,7 @@ if [ ! -z "$replace_nodes" ]; then
    DB=$(admintools -t show_active_db)
    for repNode in `echo $replace_nodes | sed -e 's/,/ /g'`
    do
-      vsql -c "UPDATE autoscale.launches SET status='START VERTICA ON REPLACEMENT NODE' WHERE replace_node_address='$repNode' ; COMMIT" > /dev/null
+      vsql -c "UPDATE autoscale.launches SET status='START VERTICA ON REPLACEMENT NODE' WHERE replace_node_address='$repNode' and is_running; COMMIT" > /dev/null
       echo Create empty catalog directory on [$repNode] to active DB [$DB] [`date`]
       node_name=$(vsql -qAt -c "SELECT node_name from nodes where node_address='$repNode'" )
       catalog_dir="/vertica/data/$DB/${node_name}_catalog"
@@ -117,9 +117,9 @@ do
 is_inDB=$(vsql -qAt -c "select count(*) from nodes where node_address='$n'")
 [ $is_inDB -eq 0 ] && complete="FAIL - NOT IN DB" || complete="SUCCESS"
 cat > /tmp/update_launches.sql <<EOF
-UPDATE autoscale.launches SET end_time='$end_time', status = '$complete' where node_address='$n' or replace_node_address='$n';
-UPDATE autoscale.launches SET duration_s = datediff(SECOND,start_time,end_time) where node_address='$n' or replace_node_address='$n';
-UPDATE autoscale.launches SET is_running=0 where node_address='$n' or replace_node_address='$n';
+UPDATE autoscale.launches SET end_time='$end_time', status = '$complete' where node_address='$n' or replace_node_address='$n' and is_running ;
+UPDATE autoscale.launches SET duration_s = datediff(SECOND,start_time,end_time) where node_address='$n' or replace_node_address='$n' and is_running ;
+UPDATE autoscale.launches SET is_running=0 where node_address='$n' or replace_node_address='$n' and is_running ;
 COMMIT
 EOF
 vsql -f /tmp/update_launches.sql > /dev/null ;
