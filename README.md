@@ -22,7 +22,7 @@ An autoscaling group controls the creation and termination of all EC2 instances 
 
 Our Vertica Auto Scaling package provides the configuration and scripts to allow the launching and termination of instances by the auto scaling service to integrate with Vertica, to a) make a cluster/DB bigger, b) make a cluster/DB smaller, c) replace one or more DOWN nodes.
 
-<img style="margin-left: 40px;" src="autoscaling-architecture.png" alt="Architecture" height="300" width="380">
+<img style="margin-left: 100px;" src="autoscaling-architecture.png" alt="Architecture" height="300" width="380">
 
 Here's how it works.
 
