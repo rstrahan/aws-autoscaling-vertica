@@ -61,6 +61,18 @@ if [ $down_nodes_count -gt $replace_nodes_count ]; then
    exit 1;
 fi
 
+# remove .ssh/known_hosts to avoid host key changed error when IP addresses are reused
+for existingNode in `vsql -qAt -c "select node_address from nodes"`
+do
+   echo "Remove .ssh/known_hosts on node [$existingNode]"
+   ssh -o "StrictHostKeyChecking no" $existingNode '(
+      # for root user
+      sudo rm -f /root/.ssh/known_hosts 
+      # for dbadmin user
+      rm -f /home/dbadmin/.ssh/known_hosts 
+   )'
+done
+
 # process new nodes
 if [ ! -z "$new_nodes" ]; then
    echo add new nodes [$new_nodes] to cluster [`date`]
@@ -78,20 +90,6 @@ fi
 if [ ! -z "$replace_nodes" ]; then
    echo Sync replacement nodes [$replace_nodes] to cluster [`date`]
    vsql -c "UPDATE autoscale.launches SET status='SYNC REPLACEMENT NODES IN CLUSTER' WHERE is_running AND replace_node_address IS NOT NULL; COMMIT" > /dev/null
-   # remove existing entries from .ssh/known_hosts to avoid host key changed error
-   for existingNode in `vsql -qAt -c "select node_address from nodes"`
-   do
-      for repNode in `echo $replace_nodes | sed -e 's/,/ /g'`
-      do
-         echo "Remove existing entries for [$repNode] from .ssh/known_hosts on node [$existingNode]"
-         ssh -o "StrictHostKeyChecking no" $existingNode '(
-            # for root user
-            sudo sh -c "grep -v $repNode < /root/.ssh/known_hosts > /tmp/known_hosts; mv /tmp/known_hosts /root/.ssh/known_hosts"
-            # for dbadmin user
-            grep -v $repNode < /home/dbadmin/.ssh/known_hosts > /tmp/known_hosts; mv /tmp/known_hosts /home/dbadmin/.ssh/known_hosts
-         )'
-      done
-   done
    # run install_vertica with no --add-hosts argument - this will setup keys etc. on replacement nodes
    sudo /opt/vertica/sbin/install_vertica --point-to-point -L $autoscaleDir/license.dat --dba-user-password-disabled --data-dir /vertica/data --ssh-identity $autoscaleDir/key.pem --failure-threshold HALT
    DB=$(admintools -t show_active_db)

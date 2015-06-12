@@ -16,6 +16,27 @@ As you read through the sections below, you will learn how it all works, and you
 
 Ready to get started?
 
+## Architectural overview
+
+An autoscaling group controls the creation and termination of all EC2 instances used as Vertica cluster nodes. The EC2 images are built from the Vertica Amazon Machine Image (AMI). The number of instances are based on the (configurable) desired size of the group, and if an instance is terminated, autoscaling will automatically create a new instance.
+
+Our Vertica Auto Scaling package provides the configuration and scripts to allow the launching and termination of instances by the auto scaling service to integrate with Vertica, to a) make a cluster/DB bigger, b) make a cluster/DB smaller, c) replace one or more DOWN nodes.
+
+style="margin-left: 40px;" src="autoscaling-architecture.png" alt="Architecture" height="300" width="380">
+
+Here's how it works.
+
+- Initially, we start the auto scaling group with just one node, used to create a bootstrap cluster and active database.
+Then we expand the desired size of the group, prompting auto scaling to launch new EC2 instances. 
+
+- Expand the desired size of the group to prompt auto scaling to launch new EC2 instances. Each new node runs a custom script allowing it to join the running cluster by conecting via SQL to an existing node and calling a Vertica external procedure.
+ 
+- If the desired group size is decreased, auto scaling will terminate as many EC2 instances as necessary to reduce the group to the new desired size. The auto scaling 'lifecycle hook' mechanism gives us an opportunity to run the necessary scripts to remove the nodes and rebalance the cluster before the terminated nodes go offline. 
+
+- Each node can detect when any cluster node has been DOWN for more than a configurable timeout threshold, and instruct AWS to terminate the EC2 instance associated with the DOWN node. Auto Scaling will then attempt to launch a new instance to replace  the terminated instance.  The new instance checks (via its launch script) to see if there are any DOWN nodes before it tries to join the cluster, and, if so, it will 'adopt' the Private IP Address of the down node and join the cluster masquarading as the node which failed, initiate node recovery, and so restore the cluster to health.
+
+
+ 
 ## Setup
 
 - **Download the Vertica Auto Scaling package from github**  
