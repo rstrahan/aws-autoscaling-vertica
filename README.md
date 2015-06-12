@@ -3,7 +3,7 @@
 
 If you are using AWS (or are considering using AWS) to host your Vertica cluster, then you may wonder if the AWS Auto Scaling service will work with a Vertica cluster. Well, wonder no more - the answer is 'yes'.
 
-Our new AWS Vertica Autoscaling package makes the setup easy. Here are some of its features:
+Our new AWS Vertica Autoscaling package makes it easy. Here are some of the features:
 - Provision a new Vertica cluster with the number of nodes you want
 - Add horsepower by making your cluster bigger
 - Save money by making your cluster smaller
