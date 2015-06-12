@@ -66,6 +66,12 @@ Three simple steps:
 
 # expand cluster to desired size (per config file)
 ./scale_cluster.sh
+Configuring Autoscaling Group: BobsAutoscalingCluster1
+Setting
+ - min instances:       3
+ - max instances:       9
+ - desired instances:   3
+Done
 ```
 After a few minutes your cluster will be ready. Now you can create users, hook up your application, load your data, & import cluster to Vertica Management Console.
 
@@ -140,11 +146,9 @@ When it has finished, the cluster is restored again to perfect health.
 
 
 
-## APPENDIX - Config File
+## APPENDIX - Config File *** TO BE COMPLETED ***
 
-- Create config File: autoscaling_vars.sh
-
-Copying the template provided, and edit to provide valid settings for each variable. See Appendix for more detail.
+Copy the template provided, and edit to provide valid settings for each variable. See Appendix for more detail.
 
 The configuration file expects you to provide names and paths to some existing AWS artifacts:
 - You account AWS Access Key ID, Secret Key
@@ -170,13 +174,16 @@ When you are done editing the config script, check it with the validation script
 
 # TODO
 
-- Usage triggers for scaling
-- Schedule trigger for scaling
-- Test at scale - best scaling factor, rebalance time, etc.
-- Placement Group problems: (should PG be optional?)
-Description: Launching a new EC2 instance.  Status Reason: We currently do not have sufficient capacity to launch all of the additional requested instances into Placement Group 'BobsPlacementGroup'.  You may be able to satisfy your full cluster requirement by first terminating all of the existing instances in Placement Group 'BobsPlacementGroup' then launching the full cluster of required instances into Placement Group 'BobsPlacementGroup' in a single launch request. Launching EC2 instance failed.
-- configuration in DB tables instead of file.. make config dynamic
+Consider:
+- Usage based triggers for scaling
+- Schedule based triggers for scaling
+- Test at higher scale - how to optimize local segmentation / scaling factor, rebalance time, etc.
+- Maintain configuration in DB tables instead of file.
+- Placement Group capacity problems: (should PG be optional?)
+*Description: Launching a new EC2 instance.  Status Reason: We currently do not have sufficient capacity to launch all of the additional requested instances into Placement Group 'BobsPlacementGroup'.  You may be able to satisfy your full cluster requirement by first terminating all of the existing instances in Placement Group 'BobsPlacementGroup' then launching the full cluster of required instances into Placement Group 'BobsPlacementGroup' in a single launch request. Launching EC2 instance failed.*
 NEXT
-- ELB
-- auto DR cluster?
+
+# Next AWS Features to consider
+- Elastic Load Balancing
+- automatically launch DR cluster from backup snapshots
 
