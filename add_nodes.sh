@@ -48,7 +48,18 @@ done
 echo Retrieve details for instances queued for addition [`date`]
 new_nodes=$(vsql -qAt -c "SELECT node_address FROM autoscale.launches WHERE is_running AND replace_node_address IS NULL" | paste -d, -s);
 replace_nodes=$(vsql -qAt -c "SELECT replace_node_address FROM autoscale.launches WHERE is_running AND replace_node_address IS NOT NULL" | paste -d, -s);
+down_nodes=$(vsql -qAt -c "SELECT node_address FROM nodes WHERE node_state='DOWN'" | paste -d, -s);
 
+echo "Check that we have enough 'replace_nodes' for all the 'down_nodes'."
+# If not, exit now, and we'll pick up pending entries next time when new instances launch
+replace_nodes_count=$(echo $replace_nodes | awk -F, '{print NF}')
+down_nodes_count=$(echo $down_nodes | awk -F, '{print NF}')
+if [ $down_nodes_count -gt $replace_nodes_count ]; then
+   status="Insufficient replacement nodes [$replace_nodes_count] to replace down nodes [down_nodes_count]. Wait for new launch(es)."
+   echo $status
+   vsql -c "UPDATE autoscale.launches SET status='$status' WHERE is_running; COMMIT" > /dev/null
+   exit 1;
+fi
 
 # process new nodes
 if [ ! -z "$new_nodes" ]; then

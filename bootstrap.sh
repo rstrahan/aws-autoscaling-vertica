@@ -20,9 +20,9 @@ while [ 1 ]; do
    sleep 60
 done
 scp -i $pem_file $pem_file dbadmin@$publicIp:/home/dbadmin/autoscale/key.pem
-ssh -i $pem_file -o "StrictHostKeyChecking no" dbadmin@$publicIp chmod 400 /home/dbadmin/autoscale/key.pem
-scp -i $pem_file *.sh dbadmin@$publicIp:/home/dbadmin/autoscale/
+scp -i $pem_file * dbadmin@$publicIp:/home/dbadmin/autoscale/
 [ "$license_file" != "CE" ] && scp -i $pem_file $license_file dbadmin@$publicIp:/home/dbadmin/autoscale/license.dat
+ssh -i $pem_file -o "StrictHostKeyChecking no" dbadmin@$publicIp chmod 400 /home/dbadmin/autoscale/key.pem
 
 echo "Configure Vertica 1-node cluster on node [$publicIp]"
 ssh -i $pem_file dbadmin@$publicIp '(
