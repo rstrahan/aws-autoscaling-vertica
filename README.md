@@ -27,13 +27,12 @@ The Vertica Auto Scaling package provides the configuration and scripts for the 
 Here's how it works.
 
 - Initially, we start the auto scaling group with just one node, used to create a bootstrap cluster and active database.
-Then we expand the desired size of the group, prompting auto scaling to launch new EC2 instances. 
 
-- Expand the desired size of the group to prompt auto scaling to launch new EC2 instances. Each new node runs a custom script allowing it to join the running cluster by conecting via SQL to an existing node and calling a Vertica external procedure.
+- Expand the desired size of the group to prompt auto scaling to launch new EC2 instances. Each new node runs a custom launch script allowing it to join the running cluster by conecting via vsql to an existing node (in the same group) and calling a Vertica external procedure.
  
 - If the desired group size is decreased, auto scaling will terminate as many EC2 instances as necessary to reduce the group to the new desired size. The auto scaling 'lifecycle hook' mechanism gives us an opportunity to run the necessary scripts to remove the nodes and rebalance the cluster before the terminated nodes go offline. 
 
-- Each node can detect when any cluster node has been DOWN for more than a configurable timeout threshold, and instruct AWS to terminate the EC2 instance associated with the DOWN node. Auto Scaling will then attempt to launch a new instance to replace  the terminated instance.  The new instance checks (via its launch script) to see if there are any DOWN nodes before it tries to join the cluster, and, if so, it will 'adopt' the Private IP Address of the down node and join the cluster masquarading as the node which failed, initiate node recovery, and so restore the cluster to health.
+- Each node can detect when any database node has been DOWN for more than a configurable timeout threshold, and instruct AWS to terminate the EC2 instance associated with the DOWN node. Auto Scaling will then attempt to launch a new instance to replace  the terminated instance.  The new instance checks (via its launch script) to see if there are any DOWN nodes before it tries to join the cluster, and, if so, it will 'adopt' the Private IP Address of the down node and join the cluster masquarading as the node which failed, initiate node recovery, and so restore the cluster to health.
 
 
  
