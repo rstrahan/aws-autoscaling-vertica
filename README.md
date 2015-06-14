@@ -211,7 +211,7 @@ You will be expexted to provide names and paths to some existing AWS artifacts:
 
 If you don't have any of these, don't panic! Instead, use the AWS console to create them. It's easy - there are no special requirements (except for the IAM role, described in the next paragraph) - just make sure that you use a VPC subnet that has plenty of addresses to accommodate the maximum number of nodes you will ever have in your cluster, and that you use a security group that is permissive, or that at least won't prevent Vertica from working (see [Vertica Doc - Firewall Considerations](http://my.vertica.com/docs/7.1.x/HTML/index.htm#Authoring/InstallationGuide/BeforeYouInstall/EnsurePortsAreAvailable.htm)).
 
-Create an AWS Identity and Access Management (IAM) role using the steps in [Creating a Role for an AWS Service (AWS Management Console)](http://docs.aws.amazon.com/IAM/latest/UserGuide/create-role-xacct.html) in the *Using IAM guide*. 
+Create an AWS Identity and Access Management (IAM) role using the steps in [Creating a Role for an AWS Service (AWS Management Console)](http://docs.aws.amazon.com/IAM/latest/UserGuide/create-role-xacct.html) in the *Using IAM guide*.
 - When you are prompted to enter a name, use **“autoscale_lifecyclehook”**
 - When you are prompted to select a role type, choose **AWS Service Roles** and then select **AutoScaling Notification Access**.
 *NOTE: If you do not have AWS IAM administration privileges, you will need the help of your AWS administrator for this step. Also, ask your admin to give you “PassRole” rights for this role, so that you are allowed to assign the role to the service when you run the setup script.*
@@ -232,10 +232,20 @@ See the helpful comments included in the `autoscaling_vars.sh_template` for desc
 When you are done editing the config script, check it with the validation script: `./validate_config.sh`
 
 
-# Stay Tuned for more
+----
+*This Vertica AWS Auto Scale package is free for you to use and redistribute subject to the terms in the included license.txt file. You are welcome (even encouraged) to make it better and contribute it back to the community.*
 
-Other topics we hope to address soon in our AWS series include:
-- Using AWS Elastic Load Balancer (ELB) for Vertica
-- Cluster Cloning - automatically provision and populate a new DR cluster from your backups.
-- Integrate with AWS 
+Copyright (c) 2011-2015 by Vertica, an HP Company.  All rights reserved.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
