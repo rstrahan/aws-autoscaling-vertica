@@ -1,5 +1,5 @@
 #! /bin/sh
-
+# Copyright (c) 2011-2015 by Vertica, an HP Company.  All rights reserved.
 # Intended for rare occasions when you need to terminate instances that, due to incomplete setup, are
 # stuck in termination due to unprocessed lifecycle hooks.
 # Read SQS queue - for each teremination message, continue lifecycle and delete message

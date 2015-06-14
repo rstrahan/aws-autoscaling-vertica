@@ -1,4 +1,5 @@
 #!/bin/sh
+# Copyright (c) 2011-2015 by Vertica, an HP Company.  All rights reserved.
 # Removes nodes from currently active DB and cluster.
 # Run as external procedure from vertica server.
 . /home/dbadmin/.bashrc

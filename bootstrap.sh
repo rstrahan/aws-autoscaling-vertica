@@ -1,4 +1,6 @@
 #!/bin/sh
+# Copyright (c) 2011-2015 by Vertica, an HP Company.  All rights reserved.
+# Bootstraps first cluster instance
 . ./autoscaling_vars.sh
 
 echo "Wait for first cluster instance to be in running state"

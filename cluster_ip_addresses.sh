@@ -1,5 +1,5 @@
 #!/bin/sh
-
+# Copyright (c) 2011-2015 by Vertica, an HP Company.  All rights reserved.
 # Returns a list of public / private IP addresses for each node in the cluster
 
 . ./autoscaling_vars.sh

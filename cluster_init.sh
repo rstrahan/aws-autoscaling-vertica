@@ -1,5 +1,6 @@
 #!/bin/sh
-
+# Copyright (c) 2011-2015 by Vertica, an HP Company.  All rights reserved.
+# Run as part of bootstrapping first instance.. creates 1-node cluster
 . ./autoscaling_vars.sh
 
 autoscale_dir=/home/dbadmin/autoscale

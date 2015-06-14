@@ -1,5 +1,5 @@
 #! /bin/sh
-
+# Copyright (c) 2011-2015 by Vertica, an HP Company.  All rights reserved.
 # Update autoscaling group based on current min, max, desired settings in the
 # config file (autoscaling_vars.sh)
 

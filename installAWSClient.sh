@@ -1,5 +1,6 @@
 #! /bin/sh
-
+# Copyright (c) 2011-2015 by Vertica, an HP Company.  All rights reserved.
+# Automates installation of AWS CLI
 
 sudo sh -c '(
 . ./autoscaling_vars.sh

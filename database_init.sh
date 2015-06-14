@@ -1,4 +1,7 @@
 #!/bin/sh
+# Copyright (c) 2011-2015 by Vertica, an HP Company.  All rights reserved.
+# Run as part of bootstrapping first instance.. creates and configures 1-node auto scale compatible database
+
 
 . ./autoscaling_vars.sh
 

@@ -1,4 +1,5 @@
 #!/bin/sh
+# Copyright (c) 2011-2015 by Vertica, an HP Company.  All rights reserved.
 # Adds nodes to cluster and currently active DB.
 # Run as external procedure from vertica server.
 

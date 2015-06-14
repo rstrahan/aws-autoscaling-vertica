@@ -1,5 +1,5 @@
 #!/bin/sh
-
+# Copyright (c) 2011-2015 by Vertica, an HP Company.  All rights reserved.
 # Will terminate the autoscaling cluster - entirely!
 . ./autoscaling_vars.sh
 

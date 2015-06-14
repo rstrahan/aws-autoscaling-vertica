@@ -1,5 +1,6 @@
 #!/bin/sh
-
+# Copyright (c) 2011-2015 by Vertica, an HP Company.  All rights reserved.
+# Setup auto scaling, and initiate a 1-node group for bootstrapping
 . ./autoscaling_vars.sh
 
 echo "Create placement group for new cluster"

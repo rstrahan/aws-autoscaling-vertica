@@ -1,5 +1,5 @@
 #!/bin/sh
-
+# Copyright (c) 2011-2015 by Vertica, an HP Company.  All rights reserved.
 # Validate config settings
 # TODO - validate AWS settings - keypair, subnet, etc.
 

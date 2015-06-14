@@ -1,4 +1,6 @@
 #! /bin/sh
+# Copyright (c) 2011-2015 by Vertica, an HP Company.  All rights reserved.
+# Creates the user data launch.sh script from the template, using the config file
 
 # make launch.sh from template and config
 
