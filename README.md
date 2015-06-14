@@ -3,14 +3,14 @@
 
 If you are using AWS (or are considering using AWS) to host your Vertica cluster, then you may wonder if the AWS Auto Scaling service will work with a Vertica cluster. Well, wonder no more - the answer is 'yes'.
 
-Our new Vertica AWS Autoscaling package makes it easy. Here are some of the features:
+Our new Vertica AWS Auto Scaling package makes it easy. Here are some of the features:
 - Provision a new Vertica cluster with the number of nodes you want
 - Add horsepower by making your cluster bigger
 - Save money by making your cluster smaller
 - Keep your cluster resilient by automatically replacing failed nodes with new nodes (no need to pay for active standby nodes)
 - Subscribe to receive notifications when nodes are added or removed
 
-The Vertica auto scaling package is provided to you free of charge (and also free of any warranty or liability). If you like it you can use it as it is, or you can make it better, and contribute it back to the Vertica community.  
+The Vertica Auto Scaling package is provided to you free of charge (and also free of any warranty or liability). If you like it you can use it as it is, or you can make it better, and contribute it back to the Vertica community.  
 
 As you read through the sections below, you will learn how it all works, and you'll be able to try it for yourself.
 
@@ -18,7 +18,7 @@ Ready to get started?
 
 ## Architectural overview
 
-An autoscaling group controls the creation and termination of all EC2 instances used as Vertica cluster nodes. EC2 images are built from the Vertica 7.1.1 Amazon Machine Image (AMI). The instance count is established, and maintained, based on the configured 'desired' size of the group.
+An auto scaling group controls the creation and termination of all EC2 instances used as Vertica cluster nodes. EC2 images are built from the Vertica 7.1.1 Amazon Machine Image (AMI). The instance count is established, and maintained, based on the configured 'desired' size of the group.
 
 The Vertica Auto Scaling package provides the smarts for the AWS Auto Scaling service to integrate with Vertica, to a) make a cluster bigger, b) make a cluster smaller, c) replace one or more DOWN nodes.
 
@@ -35,14 +35,13 @@ Here's how it works.
 - Each node can detect when any database node has been DOWN for more than a configurable timeout threshold, and instruct AWS to terminate the EC2 instance associated with the DOWN node. Auto Scaling will then attempt to launch a new instance to replace  the terminated instance.  The new instance checks (via its launch script) to see if there are any DOWN nodes before it tries to join the cluster, and, if so, it will 'adopt' the Private IP Address of the down node and join the cluster masquarading as the node which failed, initiate node recovery, and so restore the cluster to health.
 
 
- 
 ## Setup
 
 - **Download the Vertica Auto Scaling package from github**  
 `git clone https://github.com/rstrahan/aws-autoscaling-vertica.git`
 
 - **Create the config file**  
-Copy the template, `autoscaling_vars.sh.template`, to `autoscaling_vars.sh`, and edit to provide valid settings for each variable. See Appendix B for details.  
+Copy the template, `autoscaling_vars.sh.template`, to `autoscaling_vars.sh`, and edit to provide valid settings for each variable (see Appendix).
 When you are done editing, check the configuration with `./validate_config.sh`
 
 - **Make the instance userdata launch script**  
@@ -163,11 +162,11 @@ NOTE, every time nodes are added or removed, the cluster will be rebalanced auto
 
 By default, an AWS EC2 [Placement Group](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html) will be created for you during setup. All instances in your auto scaling group will be launched within this placement group to maximimise the performance and reliability of your cluster, by providing the fastest and most reliable 10Gbps networking possible in AWS.
 
-However, using a placement group does increase the chances that an attempt to launch new instances may fail due to insufficient capacity. If that happens, the Auto Scaling service will notify you (via SNS) of a failed launch, and it will retry a little later.  
+However, using a placement group makes it possible that an attempt to launch new instances may fail due to insufficient capacity. If that happens, the Auto Scaling service will notify you (via SNS) of a failed launch, and it will retry (and hopefully succeed) a little later.  
 
 ## Subscribing for SNS email notifications
 
-After setting up the auto scaling group, go to the [AWS SNS console](https://console.aws.amazon.com/sns/v2/home), and select the topic that was created for your group (<GroupName>_Scale_Event). Use the Action menu to subscribe.
+After setting up the auto scaling group, go to the [AWS SNS console](https://console.aws.amazon.com/sns/v2/home), and select the topic that was created for your group (<GroupName>_Scale_Event). Use the Action menu to subscribe to the topic and specify your delivery method of choice.
 
 ## Troubleshooting
 
