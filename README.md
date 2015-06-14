@@ -144,7 +144,7 @@ When it has finished, the cluster is restored again to perfect health.
 
 The EC2 instances associated with your auto scaling cluster can be seen from the AWS EC2 Console, identified by name tags showing the group name that you specified in the configuration.
 
-<img style="margin-left: 40px;" src="EC2Instances.png" alt="EC2 Console view" height="250" width="700">
+<img style="margin-left: 40px;" src="EC2Instances.png" alt="EC2 Console view" height="150" width="700">
 
 You can also view, and even edit, the auto scaling group settings from the EC2 console. If you prefer, you can initiate scale up or scale down actions by changing the desired group from the console, instead of editing the config file and running scale_cluster.sh.
 
