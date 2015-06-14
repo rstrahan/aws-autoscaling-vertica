@@ -18,19 +18,19 @@ Ready to get started?
 
 ## Architectural overview
 
-An autoscaling group controls the creation and termination of all EC2 instances used as Vertica cluster nodes. EC2 images are built from the Vertica 7.1.1 Amazon Machine Image (AMI). The instances count is established, and maintained, based on configured 'desired' size of the group.
+An autoscaling group controls the creation and termination of all EC2 instances used as Vertica cluster nodes. EC2 images are built from the Vertica 7.1.1 Amazon Machine Image (AMI). The instance count is established, and maintained, based on the configured 'desired' size of the group.
 
-The Vertica Auto Scaling package provides the configuration and scripts for the AWS Auto Scaling service to integrate with Vertica, to a) make a cluster/DB bigger, b) make a cluster/DB smaller, c) replace one or more DOWN nodes.
+The Vertica Auto Scaling package provides the smarts for the AWS Auto Scaling service to integrate with Vertica, to a) make a cluster bigger, b) make a cluster smaller, c) replace one or more DOWN nodes.
 
 <img style="margin-left: 100px;" src="autoscaling-architecture.png" alt="Architecture" height="300" width="480">
 
 Here's how it works.
 
-- Initially, we start the auto scaling group with just one node, used to create a bootstrap cluster and active database.
+- To get started, we launch a new auto scaling group with just one node, on which we create a bootstrap cluster and database.
 
-- Expand the desired size of the group to prompt auto scaling to launch new EC2 instances. Each new node runs a custom launch script allowing it to join the running cluster by conecting via vsql to an existing node (in the same group) and calling a Vertica external procedure.
+- Expand the desired size of the group to prompt auto scaling to launch new EC2 instances. Each new node will run a custom launch script allowing it to join the cluster by conecting via vsql to the database running on an existing node in the group, and invoking a script via a Vertica external procedure call.
  
-- If the desired group size is decreased, auto scaling will terminate as many EC2 instances as necessary to reduce the group to the new desired size. The auto scaling 'lifecycle hook' mechanism gives us an opportunity to run the necessary scripts to remove the nodes and rebalance the cluster before the terminated nodes go offline. 
+- If the desired group size is decreased, auto scaling will terminate as many EC2 instances as necessary to reduce the group to the new desired size. The auto scaling 'lifecycle hook' mechanism publishes an SQS message, which gives the running nodes an opportunity to automatically run the necessary scripts to remove the terminating nodes and rebalance the cluster before the instances go offline. 
 
 - Each node can detect when any database node has been DOWN for more than a configurable timeout threshold, and instruct AWS to terminate the EC2 instance associated with the DOWN node. Auto Scaling will then attempt to launch a new instance to replace  the terminated instance.  The new instance checks (via its launch script) to see if there are any DOWN nodes before it tries to join the cluster, and, if so, it will 'adopt' the Private IP Address of the down node and join the cluster masquarading as the node which failed, initiate node recovery, and so restore the cluster to health.
 
