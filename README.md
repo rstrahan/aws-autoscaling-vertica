@@ -145,13 +145,13 @@ When it has finished, the cluster is restored again to perfect health.
 
 The EC2 instances associated with your auto scaling cluster can be seen from the AWS EC2 Console, identified by name tags showing the group name that you specified in the configuration.
 
-<img style="margin-left: 40px;" src="EC2Instances.png" alt="EC2 Console view" height="300" width="600">
+<img style="margin-left: 40px;" src="EC2Instances.png" alt="EC2 Console view" height="250" width="700">
 
 You can also view, and even edit, the auto scaling group settings from the EC2 console. If you prefer, you can initiate scale up or scale down actions by changing the desired group from the console, instead of editing the config file and running scale_cluster.sh.
 
 <img style="margin-left: 40px;" src="AutoScalingGroup.png" alt="EC2 Auto Scaling Group view" height="300" width="600">
 
-## Trigger cluster scaling based on utilization, and/or schedules
+## Dynamic cluster scaling
 
 AWS makes it possible to initiate auto scaling actions based on metrics from Cloudwatch, using [auto scaling policies](http://docs.aws.amazon.com/AutoScaling/latest/DeveloperGuide/policy_creating.html). By adding poloicies, you could, for example, configure your auto scaling group to add nodes to your cluster if, say, the average CPU utilization of the existing instances exceeded some threshold for some sustained time window, and to reduce the cluster size after the cooldown period, if the CPU utilization is stays under some lower threshold. This mechanism has the potential to provide true 'hands off' scaling. 
 
@@ -165,7 +165,7 @@ By default, an AWS EC2 [Placement Group](http://docs.aws.amazon.com/AWSEC2/lates
 
 However, using a placement group does increase the chances that an attempt to launch new instances may fail due to insufficient capacity. If that happens, the Auto Scaling service will notify you (via SNS) of a failed launch, and it will retry a little later.  
 
-## Subscribing for email notifications
+## Subscribing for SNS email notifications
 
 After setting up the auto scaling group, go to the [AWS SNS console](https://console.aws.amazon.com/sns/v2/home), and select the topic that was created for your group (<GroupName>_Scale_Event). Use the Action menu to subscribe.
 
@@ -200,16 +200,21 @@ Maintains a log all all instances that were DOWN for whatever reason for more th
 
 ## APPENDIX - Config File 
 
-Copy the template provided, and edit to provide valid settings for each variable. See Appendix for more detail.
+Create `autoscaling_vars.sh` by copying the template provided, and edit to provide valid settings for each variable. 
 
-The configuration file expects you to provide names and paths to some existing AWS artifacts:
-- You account AWS Access Key ID, Secret Key
+You will be expexted to provide names and paths to some existing AWS artifacts:
+- Your account AWS Access Key ID, Secret Key
 - An AWS EC2 key pair and associated certificate file (.pem)
 - An IAM Role that allows the Auto Scaling service to interact with the SQS and SNS services
 - A VPC Subnet to use for your cluster
 - A Security Group for AWS to apply to your new cluster nodes.
 
-If you don't have any of these, don't panic! Instead, use the AWS console to create them. It's easy - there are no special requirements - just make sure that you use a VPC subnet that has plenty of addresses to accommodate the maximum number of nodes you will ever have in your cluster, and that you use a security group that is permissive, or that at least won't prevent Vertica from working (see [Vertica Doc - Firewall Considerations](http://my.vertica.com/docs/7.1.x/HTML/index.htm#Authoring/InstallationGuide/BeforeYouInstall/EnsurePortsAreAvailable.htm)).
+If you don't have any of these, don't panic! Instead, use the AWS console to create them. It's easy - there are no special requirements (except for the IAM role, described in the next paragraph) - just make sure that you use a VPC subnet that has plenty of addresses to accommodate the maximum number of nodes you will ever have in your cluster, and that you use a security group that is permissive, or that at least won't prevent Vertica from working (see [Vertica Doc - Firewall Considerations](http://my.vertica.com/docs/7.1.x/HTML/index.htm#Authoring/InstallationGuide/BeforeYouInstall/EnsurePortsAreAvailable.htm)).
+
+Create an AWS Identity and Access Management (IAM) role using the steps in [Creating a Role for an AWS Service (AWS Management Console)](http://docs.aws.amazon.com/IAM/latest/UserGuide/create-role-xacct.html) in the *Using IAM guide*. 
+- When you are prompted to enter a name, use **“autoscale_lifecyclehook”**
+- When you are prompted to select a role type, choose **AWS Service Roles** and then select **AutoScaling Notification Access**.
+*NOTE: If you do not have AWS IAM administration privileges, you will need the help of your AWS administrator for this step. Also, ask your admin to give you “PassRole” rights for this role, so that you are allowed to assign the role to the service when you run the setup script.*
 
 If you are planning for your Vertica cluster to have more than 3 nodes (which seem likely if you are interested in autoscaling!), then you'll also need a Vertica license, because the free built-in Community Edition (CE) license is limited to 3 nodes. You can use the CE license if you want to experiment with scaling between 1 and 3 nodes (KSafety 0), or to maintain a 3-node cluster using auto scaling only to provide resilience.
 
@@ -222,21 +227,15 @@ Everything else will be created for you, including:
 - Vertica cluster
 - Vertica Database
 
+See the helpful comments included in the `autoscaling_vars.sh_template` for descriptions of the required settings.
+
 When you are done editing the config script, check it with the validation script: `./validate_config.sh`
 
 
-# TODO
+# Stay Tuned for more
 
-Consider:
-- Usage based triggers for scaling
-- Schedule based triggers for scaling
-- Test at higher scale - how to optimize local segmentation / scaling factor, rebalance time, etc.
-- Maintain configuration in DB tables instead of file.
-- Placement Group capacity problems: (should PG be optional?)
-
-NEXT
-
-# Next AWS Features to consider
-- Elastic Load Balancing
-- automatically launch DR cluster from backup snapshots
+Other topics we hope to address soon in our AWS series include:
+- Using AWS Elastic Load Balancer (ELB) for Vertica
+- Cluster Cloning - automatically provision and populate a new DR cluster from your backups.
+- Integrate with AWS 
 
