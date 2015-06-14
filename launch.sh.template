@@ -1,4 +1,7 @@
 #!/bin/sh
+# Copyright (c) 2011-2015 by Vertica, an HP Company.  All rights reserved.
+# Adds new EC2 instances to the running cluster and database
+
 (
 PATH=/usr/local/bin:/opt/vertica/bin:${PATH}
 # in non terminal mode, redirect stdout and stderr to logfile

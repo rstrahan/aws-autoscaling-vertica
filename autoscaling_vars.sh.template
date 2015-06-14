@@ -1,3 +1,6 @@
+# Copyright (c) 2011-2015 by Vertica, an HP Company.  All rights reserved.
+# Configuration settings
+
 aws_access_key_id=YOUR_ACCESS_ID
 aws_secret_access_key=YOUR_SECRET_ACCESS_KEY
 region=us-east-1						# Or your region, if different	
