@@ -18,7 +18,7 @@ Ready to get started?
 
 ## Architectural overview
 
-An auto scaling group controls the creation and termination of all EC2 instances used as Vertica cluster nodes. EC2 images are built from the Vertica 7.1.1 Amazon Machine Image (AMI). The instance count is established, and maintained, based on the configured 'desired' size of the group.
+An auto scaling group controls the creation and termination of all EC2 instances used as Vertica cluster nodes. The instance count is established, and maintained, based on the configured 'desired' size of the group. (The EC2 images are built using the Vertica 7.1.1 Amazon Machine Image (AMI) - so the Vertica software package is pre-installed)
 
 The Vertica Auto Scaling package provides the smarts for the AWS Auto Scaling service to integrate with Vertica, to a) make a cluster bigger, b) make a cluster smaller, c) replace one or more DOWN nodes.
 
