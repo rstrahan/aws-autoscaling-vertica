@@ -134,7 +134,7 @@ Here, we see a failed node highlighted DOWN in MC, with the remaining 2 nodes ma
 
 After the timeout has elaspsed (the default is 5 minutes), the AWS EC2 instance for the DOWN node will be terminated by one of the other cluster nodes. This action is logged in the table `autoscale.downNodes`
 
-The Auto Scaleing service will then launch a new instance to restore the cluster to the desired node count. You can query the table `autoscale.launches` to see the updating status as the new instance is added to replace the failed one.
+The Auto Scaling service will then launch a new instance to restore the cluster to the desired node count. You can query the table `autoscale.launches` to see the updating status as the new instance is added to replace the failed one.
 
 When it has finished, the cluster is restored again to perfect health.
 
