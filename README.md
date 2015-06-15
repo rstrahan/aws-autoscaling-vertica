@@ -166,7 +166,7 @@ However, using a placement group makes it possible that an attempt to launch new
 
 ## Subscribing for SNS email notifications
 
-After setting up the auto scaling group, go to the [AWS SNS console](https://console.aws.amazon.com/sns/v2/home), and select the topic that was created for your group (<GroupName>_Scale_Event). Use the Action menu to subscribe to the topic and specify your delivery method of choice.
+After setting up the auto scaling group, go to the [AWS SNS console](https://console.aws.amazon.com/sns/v2/home), and select the topic that was created for your group (*GroupName_Scale_Event*). Use the Action menu to subscribe to the topic and specify your delivery method of choice.
 
 ## Troubleshooting
 
