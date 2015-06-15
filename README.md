@@ -10,7 +10,7 @@ Our new Vertica AWS Auto Scaling package makes it easy. Here are some of the fea
 - Keep your cluster resilient by automatically replacing failed nodes with new nodes (no need to pay for active standby nodes)
 - Subscribe to receive notifications when nodes are added or removed
 
-The Vertica Auto Scaling package is provided to you free of charge (and also free of any warranty or liability). If you like it you can use it as it is, or you can make it better, and contribute it back to the Vertica community.  
+The Vertica Auto Scaling package is provided to you free of charge (and also free of any warranty or liability). If you like it you can use it as it is, or you can make it better, and contribute your enhancements back to the Vertica community.  
 
 As you read through the sections below, you will learn how it all works, and you'll be able to try it for yourself.
 
@@ -232,7 +232,7 @@ When you are done editing the config script, check it with the validation script
 
 
 ----
-*This Vertica AWS Auto Scale package is free for you to use and redistribute subject to the terms in the included license.txt file. You are welcome (even encouraged) to make it better and contribute it back to the community.*
+*This Vertica AWS Auto Scale package is free for you to use and redistribute subject to the terms in the included license.txt file. You are welcome (even encouraged) to make it better and contribute your enhancements back to the community.*
 
 Copyright (c) 2011-2015 by Vertica, an HP Company.  All rights reserved.
 
