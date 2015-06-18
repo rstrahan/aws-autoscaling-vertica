@@ -28,11 +28,11 @@ Here's how it works.
 
 - To get started, we launch a new auto scaling group with just one node, on which we create a bootstrap cluster and database.
 
-- Expand the desired size of the group to prompt auto scaling to launch new EC2 instances. Each new node will run a custom launch script allowing it to join the cluster by conecting via vsql to the database running on an existing node in the group, and invoking the 'add_node' script on that node via a Vertica external procedure call.
+- Expand the desired size of the group to prompt auto scaling to launch new EC2 instances. Each new node will run a custom launch script allowing it to join the cluster by connecting via vsql to the database running on an existing node in the group, and invoking the 'add_node' script on that node via a Vertica external procedure call.
  
 - If the desired group size is decreased, auto scaling will terminate as many EC2 instances as necessary to reduce the group to the new desired size. The auto scaling 'lifecycle hook' mechanism publishes an SQS message, which gives the running nodes an opportunity to automatically execute the necessary scripts to remove the terminating nodes and rebalance the cluster before the instances go offline. 
 
-- Each node can detect when any database node has been DOWN for more than a configurable timeout threshold, and instruct AWS to terminate the EC2 instance associated with the DOWN node. Auto Scaling will then attempt to launch a new instance to replace  the terminated instance.  The new instance checks (via its launch script) to see if there are any DOWN nodes before it tries to join the cluster, and, if so, it will 'adopt' the Private IP Address of the down node and join the cluster masquarading as the node which failed, initiate node recovery, and so restore the cluster to health.
+- Each node can detect when any database node has been DOWN for more than a configurable timeout threshold, and instruct AWS to terminate the EC2 instance associated with the DOWN node. Auto Scaling will then attempt to launch a new instance to replace  the terminated instance.  The new instance checks (via its launch script) to see if there are any DOWN nodes before it tries to join the cluster, and, if so, it will 'adopt' the Private IP Address of the down node and join the cluster masquerading as the node which failed, initiate node recovery, and so restore the cluster to health.
 
 
 ## Setup
@@ -126,13 +126,13 @@ Management Console will automatically remove the terminated node(s) from its clu
 
 ###4. Replace a DOWN node
 
-A DOWN node will be automatically terminated, after a configurable timeout period, and replaced by a new node which will configure itself during startup to adopt the privateIP address of the terminated DOWN node.
+A DOWN node will be automatically terminated, after a configurable timeout period, and replaced by a new node which will configure itself during startup to adopt the private IP address of the terminated DOWN node.
 
 Here, we see a failed node highlighted DOWN in Management Console. 
 
 <img style="margin-left: 40px;" src="3NodeDOWN.png" alt="Node Down" height="300" width="380">
 
-After the timeout has elaspsed (the default is 5 minutes), the AWS EC2 instance for the DOWN node will be terminated by one of the other cluster nodes. This action is logged in the table `autoscale.downNodes`
+After the timeout has elapsed (the default is 5 minutes), the AWS EC2 instance for the DOWN node will be terminated by one of the other cluster nodes. This action is logged in the table `autoscale.downNodes`
 
 The Auto Scaling service will then launch a new instance to restore the cluster to the desired node count. You can query the table `autoscale.launches` to see the updating status as the new instance is added to replace the failed one.
 
@@ -156,13 +156,13 @@ AWS makes it possible to initiate auto scaling actions based on metrics from Clo
 
 It's also possible to [schedule auto scaling changes](http://docs.aws.amazon.com/AutoScaling/latest/DeveloperGuide/schedule_time.html) via the AWS CLI. For example, if you know that you need a bigger cluster at certain times in your business cycle (e.g. end of month, end of quarter, during special events, etc.) you could schedule a cluster size increase in advance, and then scale down again when you no longer need the additional nodes. 
 
-NOTE, every time nodes are added or removed, the cluster will be rebalanced automatically. Normal database operations can continue during rebalancing, although performance will be degraded until the rebalancing has completed. The HP Vertica 'Elastic Cluster' feature (with local segmentation) will be enabled by default; this helps to minimise the overhead of rebalancing under the right conditions. See [Elastic Cluster documentation](http://my.vertica.com/docs/7.1.x/HTML/index.htm#Authoring/AdministratorsGuide/ClusterManagement/ElasticCluster/ElasticCluster.htm%3FTocPath%3DAdministrator's%2520Guide%7CManaging%2520the%2520Database%7CManaging%2520Nodes%7CElastic%2520Cluster%7C_____0) to learn more about this feature and how to make best use of it.
+NOTE, every time nodes are added or removed, the cluster will be rebalanced automatically. Normal database operations can continue during rebalancing, although performance will be degraded until the rebalancing has completed. The HP Vertica 'Elastic Cluster' feature (with local segmentation) will be enabled by default; this helps to minimize the overhead of rebalancing under the right conditions. See [Elastic Cluster documentation](http://my.vertica.com/docs/7.1.x/HTML/index.htm#Authoring/AdministratorsGuide/ClusterManagement/ElasticCluster/ElasticCluster.htm%3FTocPath%3DAdministrator's%2520Guide%7CManaging%2520the%2520Database%7CManaging%2520Nodes%7CElastic%2520Cluster%7C_____0) to learn more about this feature and how to make best use of it.
 
 You should be conservative with your auto scaling policies. Cluster rebalancing can be a fairly expensive operation so you may want to experiment with policies that limit the frequency of changes, and/or manage the changes to run during off-peak hours. If you do experiment with dynamic autoscaling policies, please share your examples, and let us know what works well and what doesn't. Perhaps, together as a community, we can establish some auto scaling policy best practices.
 
 ## Placement Groups
 
-By default, an AWS EC2 [Placement Group](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html) will be created for you during setup. All instances in your auto scaling group will be launched within this placement group to maximimise the performance and reliability of your cluster, by providing the fastest and most reliable 10Gbps networking possible in AWS.
+By default, an AWS EC2 [Placement Group](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html) will be created for you during setup. All instances in your auto scaling group will be launched within this placement group to maximize the performance and reliability of your cluster, by providing the fastest and most reliable 10Gbps networking possible in AWS.
 
 However, using a placement group makes it possible that an attempt to launch new instances may fail due to insufficient capacity. If that happens, the Auto Scaling service will notify you (via SNS) of a failed launch, and it will retry (and hopefully succeed) a little later.  
 
@@ -172,7 +172,7 @@ After setting up the auto scaling group, go to the [AWS SNS console](https://con
 
 ## Troubleshooting
 
-Use the following log files and database tables to montitor auto scaling activity and to troubleshoot problems.
+Use the following log files and database tables to monitor auto scaling activity and to troubleshoot problems.
 
 - /var/log/launch.log
 Captures stdout and stderr from launch.sh script, run on each node during its first startup. If it appears that an EC2 instance has started, but has failed to join the cluster, and there is no sign of it in the autoscale.launches table, you can ssh to the affected instance and check this log file for clues.
@@ -196,14 +196,14 @@ One row for each instance added to the cluster. The 'is_running' column indicate
 One row for each instance removed from the cluster. The 'is_running' column indicates if the process is still in progress.
 
 - autoscale.downNodes
-Maintains a log all all instances that were DOWN for whatever reason for more than the threshold downtime, and as a result have been terminated to trigger the launch of a replacement.
+Maintains a log of all instances that were DOWN for whatever reason for more than the threshold downtime, and as a result have been terminated to trigger the launch of a replacement.
 
 
 ## APPENDIX - Config File 
 
 Create `autoscaling_vars.sh` by copying the template provided, and edit to provide valid settings for each variable. 
 
-You will be expexted to provide names and paths to some existing AWS artifacts:
+You will be expected to provide names and paths to some existing AWS artifacts:
 - Your account AWS Access Key ID, Secret Key
 - An AWS EC2 key pair and associated certificate file (.pem)
 - An IAM Role that allows the Auto Scaling service to interact with the SQS and SNS services
